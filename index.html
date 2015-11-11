@@ -1,0 +1,225 @@
+ <html>
+<head>
+  <script src="https://cdn.firebase.com/js/client/2.2.1/firebase.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="allin.css">
+</head>
+<body>
+<div class="example-base example-leaderboard l-demo-container">
+<textarea class="example-leaderboard-tickettitle" type="text" id="titleInput" placeholder="Enter TicketName"></textarea>
+  <div> <p id="showVotesContainer"></p></div>
+
+  <table id="voteTallyTable">
+
+  </table>
+
+  <table id="leaderboardTable">
+    <tr>
+      <th>Name</th>
+      <th>Vote</th>
+    </tr>
+  </table>
+  <footer>
+    <p>Record Your Estimate</p>
+    <button onclick="processInputEstimate(1)">1</button>
+    <button onclick="processInputEstimate(2)">2</button>
+    <button onclick="processInputEstimate(3)">3</button>
+    <button onclick="processInputEstimate(5)">5</button>
+    <button onclick="processInputEstimate(8)">8</button>
+    <button onclick="processInputEstimate(13)">13</button>
+    <button onclick="processInputEstimate(21)">21</button>
+    <p>Moderator Tools</p>
+    <button onclick="processInputTicketClicked()">Change Ticket Name</button>
+    <p/>
+    <button onclick="processInputShowVotes()">Show Votes</button>
+  </footer>
+</div>
+<script>
+
+  // Prompt the user for a name to use.
+  var username = prompt("Your name? (must be unique)", "Guest");
+
+  // Create our Firebase reference
+  var rootRef = new Firebase('https://torrid-torch-3405.firebaseio.com//ticketlist');
+  var usersRef = rootRef.child('users');
+  var ticketInfoRef = rootRef.child('ticketInfo');
+
+  var userScoreRef = usersRef.child(username); //ref to my own score
+
+  processInputEstimate(-1);
+
+  // Get a reference to my own presence status.
+  var connectedRef = new Firebase("https://torrid-torch-3405.firebaseio.com//.info/connected");
+  connectedRef.on("value", function(isOnline) {
+   if (isOnline.val()) {
+     // If we lose our internet connection, we want ourselves removed from the list.
+     userScoreRef.onDisconnect().remove();
+
+   }
+   else {
+
+     // We need to catch anytime we are marked as offline and then set the correct status. We
+     // could be marked as offline 1) on page load or 2) when we lose our internet connection
+     // temporarily.
+
+   }
+ });
+
+
+  function refreshView(rootSnapShot) {
+
+    var isShowVotes = false;
+
+    if(rootSnapShot ==null){ //first stuff
+      return;
+    }
+
+    //process info
+    if(rootSnapShot.hasOwnProperty("ticketInfo")){
+      var ticketInfoJSon = rootSnapShot.ticketInfo;
+      if (ticketInfoJSon != null){
+        var newTitle = ticketInfoJSon.title;
+        //document.getElementById("ticketInfoContainer").innerHTML = newTitle;
+        document.getElementById("titleInput").value = newTitle;
+
+        var showVotes = ticketInfoJSon.showVotes;
+        //console.log(showVotes);
+        if(showVotes!=null){
+          document.getElementById("showVotesContainer").innerHTML = showVotes + " showed votes!";
+          isShowVotes = true;
+        }
+      }
+    } else{
+
+    }
+
+
+
+    //process user estimates
+    if(rootSnapShot.hasOwnProperty("users")){
+      var usersnfoJSon = rootSnapShot.users;
+      if (usersnfoJSon != null){
+
+          var votesHash = {};
+
+          //console.log(usersnfoJSon);
+          $("#leaderboardTable tr").remove();
+          //var headerLabels = $("<tr>th>Player</th>th>Score</th>tr>");
+          //$("#leaderboardTable").append(headerLabels);
+          //$("#leaderboardTable").innerHTML = "<tr>th>Player</th>th>Score</th>tr>";
+          //$("#leaderboardTable").find(tbody).append("<tr><th>Player</th>th>Score</th>tr>");
+          var table = document.getElementById("leaderboardTable")
+          /*var row = table.insertRow(0);
+          var cell1 = row.insertCell(0);
+          var cell2 = row.insertCell(1);
+          cell1.innerHTML = "<b>Player</b>";
+          cell2.innerHTML = "<b>Score</b>";*/
+          table.innerHTML = "<tr><th>Name</th><th>Vote</th></tr>";
+
+          var keys = [];
+          for (var key in usersnfoJSon) {
+            if (usersnfoJSon.hasOwnProperty(key)) {
+              //keys.push(key);
+              //console.log(key);
+              var newScoreRow = $("<tr/>");
+              newScoreRow.append($("<td/>").append($("<em/>").text(usersnfoJSon[key].name)));
+
+              var scoreText = usersnfoJSon[key].score;
+
+              //update votesHashMap
+              if(votesHash.hasOwnProperty(scoreText)){
+                votesHash[scoreText] = votesHash[scoreText] + 1;
+              }else{
+                votesHash[scoreText] = 1;
+              }
+
+              if(isShowVotes){
+                if(scoreText == -1){
+                  scoreText = "?";
+                }
+              }else {
+                if(scoreText == -1){
+                  scoreText = "Pending";
+                }else{
+                  scoreText = "Ready";
+                }
+              }
+
+              newScoreRow.append($("<td/>").text(scoreText));
+
+              $("#leaderboardTable").append(newScoreRow);
+            }
+          }
+
+          //output votes hashmap
+          var keys = [];
+          var tallyTable = document.getElementById("voteTallyTable")
+          if(isShowVotes){
+            tallyTable.innerHTML = "<tr><th>Vote</th><th>Total</th></tr>";
+
+            for (var key in votesHash) {
+              if (votesHash.hasOwnProperty(key)) {
+                var newScoreRow = $("<tr/>");
+                newScoreRow.append($("<td/>").append($("<em/>").text(key)));
+                newScoreRow.append($("<td/>").text(votesHash[key]));
+                $("#voteTallyTable").append(newScoreRow);
+              }
+            }
+          }else{
+            tallyTable.innerHTML = "";
+
+          }
+
+
+      }
+    }
+
+
+  }
+
+//change handlers
+rootRef.on("value", function(snapshot) {
+  var newSnapshot = snapshot.val();
+  console.log(newSnapshot);
+  refreshView(newSnapshot);
+
+});
+
+
+
+//Inputs
+function processInputEstimate(newEstimate){
+
+  var newScore = Number(newEstimate);
+  userScoreRef.setWithPriority({ name:username, score:newScore }, newScore);
+
+}
+
+function processInputTicketClicked(){
+
+  var title = $("#titleInput").val();
+  $("#titleInput").val("");
+
+  if (title.length === 0)
+    return;
+
+  ticketInfoRef.update({ title: title });
+
+}
+
+function processInputShowVotes(){
+
+  ticketInfoRef.update({ showVotes: username });
+
+}
+
+
+  // When the user presses enter on titleInput, add the title to the current ticket.
+  $("#titleInput").keypress(function (e) {
+    if (e.keyCode == 13) {
+      processInputTicketClicked();
+    }
+  });
+</script>
+</body>
+</html>
