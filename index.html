@@ -6,7 +6,10 @@
 </head>
 <body>
 <div class="example-base example-leaderboard l-demo-container">
-<textarea class="example-leaderboard-tickettitle" type="text" id="titleInput" placeholder="Enter TicketName"></textarea>
+
+  <div id="titleContainer"> <p>Ticket Name not entered</p></div>
+
+
   <div> <p id="showVotesContainer"></p></div>
 
   <table id="voteTallyTable">
@@ -28,10 +31,19 @@
     <button onclick="processInputEstimate(8)">8</button>
     <button onclick="processInputEstimate(13)">13</button>
     <button onclick="processInputEstimate(21)">21</button>
+    <button onclick="processInputEstimate(-2)">?</button>
+
+
     <p>Moderator Tools</p>
-    <button onclick="processInputTicketClicked()">Change Ticket Name</button>
-    <p/>
     <button onclick="processInputShowVotes()">Show Votes</button>
+    <button onclick="processInputHideVotes()">Hide Votes</button>
+    <button onclick="processInputNewTicket()">New Ticket</button>
+    <p/>
+    <textarea class="example-leaderboard-tickettitle" type="text" id="titleInput" placeholder="Enter Ticket Name"></textarea>
+
+    <button onclick="processInputTicketClicked()">Change Ticket Name</button>
+  
+    
   </footer>
 </div>
 <script>
@@ -71,6 +83,8 @@
     var isShowVotes = false;
 
     if(rootSnapShot ==null){ //first stuff
+      processInputEstimate(-1);
+      document.getElementById("showVotesContainer").innerHTML = "";
       return;
     }
 
@@ -80,7 +94,7 @@
       if (ticketInfoJSon != null){
         var newTitle = ticketInfoJSon.title;
         //document.getElementById("ticketInfoContainer").innerHTML = newTitle;
-        document.getElementById("titleInput").value = newTitle;
+        document.getElementById("titleContainer").innerHTML = newTitle;
 
         var showVotes = ticketInfoJSon.showVotes;
         //console.log(showVotes);
@@ -135,12 +149,14 @@
 
               if(isShowVotes){
                 if(scoreText == -1){
+                  scoreText = "Did not Participate";
+                } else if(scoreText == -2){
                   scoreText = "?";
-                }
+                } 
               }else {
                 if(scoreText == -1){
                   scoreText = "Pending";
-                }else{
+                } else{
                   scoreText = "Ready";
                 }
               }
@@ -158,12 +174,16 @@
             tallyTable.innerHTML = "<tr><th>Vote</th><th>Total</th></tr>";
 
             for (var key in votesHash) {
-              if (votesHash.hasOwnProperty(key)) {
-                var newScoreRow = $("<tr/>");
+              var newScoreRow = $("<tr/>");
+              if(key == "-1"){
+                newScoreRow.append($("<td/>").append($("<em/>").text("Did not Participate")));
+              } else if(key == "-2"){
+                newScoreRow.append($("<td/>").append($("<em/>").text("?")));
+              }else {
                 newScoreRow.append($("<td/>").append($("<em/>").text(key)));
-                newScoreRow.append($("<td/>").text(votesHash[key]));
-                $("#voteTallyTable").append(newScoreRow);
               }
+              newScoreRow.append($("<td/>").text(votesHash[key]));
+              $("#voteTallyTable").append(newScoreRow);
             }
           }else{
             tallyTable.innerHTML = "";
@@ -213,13 +233,22 @@ function processInputShowVotes(){
 
 }
 
+function processInputHideVotes(){
 
-  // When the user presses enter on titleInput, add the title to the current ticket.
-  $("#titleInput").keypress(function (e) {
-    if (e.keyCode == 13) {
-      processInputTicketClicked();
-    }
-  });
+  ticketInfoRef.child("showVotes").remove();
+    document.getElementById("showVotesContainer").innerHTML = "";
+
+}
+
+function processInputNewTicket(){
+
+  rootRef.remove();
+  ticketInfoRef.update({ title: "Ticket Name not entered" });
+
+
+
+}
+
 </script>
 </body>
 </html>
