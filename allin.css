@@ -86,7 +86,7 @@ body {
   box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.3);
   padding: 20px;
   border-radius: 5px;
-  background-color: white;
+  background-color: #EEE;
   overflow: auto;
   color: #666;
 }
@@ -99,7 +99,7 @@ body {
 }
 
 .example-leaderboard table th {
-  background: #EEE;
+  background: #CCC;
   border-bottom: 1px solid #CCC;
   font-size: 12px;
   color: #999;
