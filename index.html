@@ -1,118 +1,148 @@
- <html>
+<html>
+
 <head>
   <script src="https://cdn.firebase.com/js/client/2.2.1/firebase.js"></script>
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
   <link rel="stylesheet" type="text/css" href="allin.css">
 </head>
+
 <body>
-<div class="example-base example-leaderboard l-demo-container">
+  <div class="example-base example-leaderboard l-demo-container">
 
-  <div id="titleContainer"> <p>Ticket Name not entered</p></div>
+    <div id="titleContainer">
+      <p>Ticket: Untitled</p>
+    </div>
 
+    <div id="nameContainer">
+      <p>Name: </p>
+    </div>
 
-  <div> <p id="showVotesContainer"></p></div>
+    <div>
+      <p id="showVotesContainer"></p>
+    </div>
 
-  <table id="voteTallyTable">
+    <table id="voteTallyTable">
 
-  </table>
+    </table>
 
-  <table id="leaderboardTable">
-    <tr>
-      <th>Name</th>
-      <th>Vote</th>
-    </tr>
-  </table>
-  <footer>
+    <table id="leaderboardTable">
+      <tr>
+        <th>Name</th>
+        <th>Vote</th>
+      </tr>
+    </table>
+
     <p>Record Your Estimate</p>
-    <button onclick="processInputEstimate(1)">1</button>
-    <button onclick="processInputEstimate(2)">2</button>
-    <button onclick="processInputEstimate(3)">3</button>
-    <button onclick="processInputEstimate(5)">5</button>
-    <button onclick="processInputEstimate(8)">8</button>
-    <button onclick="processInputEstimate(13)">13</button>
-    <button onclick="processInputEstimate(21)">21</button>
-    <button onclick="processInputEstimate(-2)">?</button>
+    <div id="buttonHolder"></div>
 
+    <div>
+      </p>Moderator Tools
+      <div id='modButton' class='material-button' onclick="processShowHideModTools()">+</div>
+      </p>
+    </div>
+    <div id="moderatorTools" style="visibility: hidden;">
 
-    <p>Moderator Tools</p>
-    <button onclick="processInputShowVotes()">Show Votes</button>
-    <button onclick="processInputHideVotes()">Hide Votes</button>
-    <button onclick="processInputNewTicket()">New Ticket</button>
-    <p/>
-    <textarea class="example-leaderboard-tickettitle" type="text" id="titleInput" placeholder="Enter Ticket Name"></textarea>
+      <div class='material-button' onclick="processInputShowVotes()">Show Votes</div>
+      <div class='material-button' onclick="processInputHideVotes()">Hide Votes</div>
+      <div class='material-button' onclick="processInputNewTicket()">New Ticket</div>
+      <p/>
+      <!--      <textarea class="example-leaderboard-tickettitle" type="text" id="titleInput" placeholder="Enter Ticket Name"></textarea>-->
+      <input class="example-leaderboard-tickettitle" type="text" id="titleInput" placeholder="Enter Ticket Name" size="50"></input>
 
-    <button onclick="processInputTicketClicked()">Change Ticket Name</button>
-  
-    
-  </footer>
-</div>
-<script>
+      <div class='material-button' onclick="processInputTicketClicked()">Change Ticket Name</div>
 
-  // Prompt the user for a name to use.
-  var username = prompt("Your name? (must be unique)", "Guest");
+    </div>
+  </div>
+  <script>
+    var modToolsShown = false;
+    const availableVotes = [1, 2, 3, 5, 8, 13, 21, 100, -2];
+    availableVotes.forEach(function(entry) {
+      var numberToShow = (entry != -2) ? entry : "?";
+      var button = "<div class='material-button' id='button_" + entry + "' onclick='processVoteClick(this.id)'>" + numberToShow + "</div>";
+      document.getElementById("buttonHolder").insertAdjacentHTML("beforeend", button);
+    });
 
-  // Create our Firebase reference
-  var rootRef = new Firebase('https://torrid-torch-3405.firebaseio.com//ticketlist');
-  var usersRef = rootRef.child('users');
-  var ticketInfoRef = rootRef.child('ticketInfo');
+    // Check for previously entered username
+    var previousUserName = readCookie("username");
 
-  var userScoreRef = usersRef.child(username); //ref to my own score
-
-  processInputEstimate(-1);
-
-  // Get a reference to my own presence status.
-  var connectedRef = new Firebase("https://torrid-torch-3405.firebaseio.com//.info/connected");
-  connectedRef.on("value", function(isOnline) {
-   if (isOnline.val()) {
-     // If we lose our internet connection, we want ourselves removed from the list.
-     userScoreRef.onDisconnect().remove();
-
-   }
-   else {
-
-     // We need to catch anytime we are marked as offline and then set the correct status. We
-     // could be marked as offline 1) on page load or 2) when we lose our internet connection
-     // temporarily.
-
-   }
- });
-
-
-  function refreshView(rootSnapShot) {
-
-    var isShowVotes = false;
-
-    if(rootSnapShot ==null){ //first stuff
-      processInputEstimate(-1);
-      document.getElementById("showVotesContainer").innerHTML = "";
-      return;
+    if (previousUserName == null) {
+      previousUserName = "Guest";
     }
 
-    //process info
-    if(rootSnapShot.hasOwnProperty("ticketInfo")){
-      var ticketInfoJSon = rootSnapShot.ticketInfo;
-      if (ticketInfoJSon != null){
-        var newTitle = ticketInfoJSon.title;
-        //document.getElementById("ticketInfoContainer").innerHTML = newTitle;
-        document.getElementById("titleContainer").innerHTML = newTitle;
+    // Prompt the user for a name to use.
+    var username = prompt("Your name? (must be unique)", previousUserName);
 
-        var showVotes = ticketInfoJSon.showVotes;
-        //console.log(showVotes);
-        if(showVotes!=null){
-          document.getElementById("showVotesContainer").innerHTML = showVotes + " showed votes!";
-          isShowVotes = true;
-        }
+    while (!username || !username.length || !username.trim()) {
+      username = prompt("Your name? (must be unique)", previousUserName);
+    }
+
+    eraseCookie("username");
+    createEternalCookie("username", username);
+
+    document.getElementById("nameContainer").innerHTML = "<p>Name: " + username + "</p>";
+
+    // Create our Firebase reference
+    var rootRef = new Firebase('https://torrid-torch-3405.firebaseio.com//ticketlist');
+    var usersRef = rootRef.child('users');
+
+    var ticketInfoRef = rootRef.child('ticketInfo');
+
+    var userScoreRef = usersRef.child(username); //ref to my own score
+
+    processInputEstimate(-1);
+
+    // Get a reference to my own presence status.
+    var connectedRef = new Firebase("https://torrid-torch-3405.firebaseio.com//.info/connected");
+    connectedRef.on("value", function(isOnline) {
+      if (isOnline.val()) {
+        // If we lose our internet connection, we want ourselves removed from the list.
+        userScoreRef.onDisconnect().remove();
+
+      } else {
+
+        // We need to catch anytime we are marked as offline and then set the correct status. We
+        // could be marked as offline 1) on page load or 2) when we lose our internet connection
+        // temporarily.
+
       }
-    } else{
-
-    }
+    });
 
 
+    function refreshView(rootSnapShot) {
 
-    //process user estimates
-    if(rootSnapShot.hasOwnProperty("users")){
-      var usersnfoJSon = rootSnapShot.users;
-      if (usersnfoJSon != null){
+      var isShowVotes = false;
+
+      if (rootSnapShot == null) { //first stuff
+        processInputEstimate(-1);
+        document.getElementById("showVotesContainer").innerHTML = "";
+        return;
+      }
+
+      //process info
+      if (rootSnapShot.hasOwnProperty("ticketInfo")) {
+        var ticketInfoJSon = rootSnapShot.ticketInfo;
+        if (ticketInfoJSon != null) {
+          var newTitle = ticketInfoJSon.title;
+          //document.getElementById("ticketInfoContainer").innerHTML = newTitle;
+          document.getElementById("titleContainer").innerHTML = newTitle;
+
+          var showVotes = ticketInfoJSon.showVotes;
+          //console.log(showVotes);
+          if (showVotes != null) {
+            document.getElementById("showVotesContainer").innerHTML = showVotes + " showed votes!";
+            isShowVotes = true;
+          }
+        }
+      } else {
+
+      }
+
+
+
+      //process user estimates
+      if (rootSnapShot.hasOwnProperty("users")) {
+        var usersnfoJSon = rootSnapShot.users;
+        if (usersnfoJSon != null) {
 
           var votesHash = {};
 
@@ -123,11 +153,11 @@
           //$("#leaderboardTable").innerHTML = "<tr>th>Player</th>th>Score</th>tr>";
           //$("#leaderboardTable").find(tbody).append("<tr><th>Player</th>th>Score</th>tr>");
           var table = document.getElementById("leaderboardTable")
-          /*var row = table.insertRow(0);
-          var cell1 = row.insertCell(0);
-          var cell2 = row.insertCell(1);
-          cell1.innerHTML = "<b>Player</b>";
-          cell2.innerHTML = "<b>Score</b>";*/
+            /*var row = table.insertRow(0);
+            var cell1 = row.insertCell(0);
+            var cell2 = row.insertCell(1);
+            cell1.innerHTML = "<b>Player</b>";
+            cell2.innerHTML = "<b>Score</b>";*/
           table.innerHTML = "<tr><th>Name</th><th>Vote</th></tr>";
 
           var keys = [];
@@ -136,27 +166,28 @@
               //keys.push(key);
               //console.log(key);
               var newScoreRow = $("<tr/>");
-              newScoreRow.append($("<td/>").append($("<em/>").text(usersnfoJSon[key].name)));
+
+              newScoreRow.append($("<td/>").append($("<div class='bold-text' />").text(usersnfoJSon[key].name)));
 
               var scoreText = usersnfoJSon[key].score;
 
               //update votesHashMap
-              if(votesHash.hasOwnProperty(scoreText)){
+              if (votesHash.hasOwnProperty(scoreText)) {
                 votesHash[scoreText] = votesHash[scoreText] + 1;
-              }else{
+              } else {
                 votesHash[scoreText] = 1;
               }
 
-              if(isShowVotes){
-                if(scoreText == -1){
+              if (isShowVotes) {
+                if (scoreText == -1) {
                   scoreText = "Did not Participate";
-                } else if(scoreText == -2){
+                } else if (scoreText == -2) {
                   scoreText = "?";
-                } 
-              }else {
-                if(scoreText == -1){
+                }
+              } else {
+                if (scoreText == -1) {
                   scoreText = "Pending";
-                } else{
+                } else {
                   scoreText = "Ready";
                 }
               }
@@ -170,85 +201,190 @@
           //output votes hashmap
           var keys = [];
           var tallyTable = document.getElementById("voteTallyTable")
-          if(isShowVotes){
+          if (isShowVotes) {
             tallyTable.innerHTML = "<tr><th>Vote</th><th>Total</th></tr>";
 
             for (var key in votesHash) {
               var newScoreRow = $("<tr/>");
-              if(key == "-1"){
+              if (key == "-1") {
                 newScoreRow.append($("<td/>").append($("<em/>").text("Did not Participate")));
-              } else if(key == "-2"){
+              } else if (key == "-2") {
                 newScoreRow.append($("<td/>").append($("<em/>").text("?")));
-              }else {
+              } else {
                 newScoreRow.append($("<td/>").append($("<em/>").text(key)));
               }
               newScoreRow.append($("<td/>").text(votesHash[key]));
               $("#voteTallyTable").append(newScoreRow);
             }
-          }else{
+          } else {
             tallyTable.innerHTML = "";
 
           }
 
 
+        }
+      }
+
+
+    }
+
+    //change handlers
+    rootRef.on("value", function(snapshot) {
+      var newSnapshot = snapshot.val();
+      // console.log(newSnapshot);
+      refreshView(newSnapshot);
+
+    });
+
+    function processVoteClick(id) {
+      var index = id.indexOf('_');
+      var estimate = id.substring(index + 1, id.length + 1);
+      processInputEstimate(estimate);
+      resetButtonColors();
+
+      setColor(id, "#FF9800");
+    }
+
+    function resetButtonColors() {
+      availableVotes.forEach(function(entry) {
+        setColor("button_" + entry, "#ffffff");
+      });
+    }
+
+    //Inputs
+    function processInputEstimate(newEstimate) {
+
+      var newScore = Number(newEstimate);
+      userScoreRef.setWithPriority({
+        name: username,
+        score: newScore
+      }, newScore);
+
+    }
+
+    function processInputTicketClicked() {
+
+      var title = $("#titleInput").val();
+      $("#titleInput").val("");
+
+      if (title.length === 0)
+        return;
+
+      ticketInfoRef.update({
+        title: "Ticket: " + title
+      });
+
+    }
+
+    function processInputShowVotes() {
+
+      ticketInfoRef.update({
+        showVotes: username
+      });
+
+    }
+
+    function processInputHideVotes() {
+
+      ticketInfoRef.child("showVotes").remove();
+      document.getElementById("showVotesContainer").innerHTML = "";
+
+    }
+
+    function processShowHideModTools() {
+      if (modToolsShown) {
+        document.getElementById("modButton").innerHTML = "+";
+        modToolsShown = false;
+      } else {
+        document.getElementById("modButton").innerHTML = "-";
+        modToolsShown = true;
+      }
+      setVisibility("moderatorTools", modToolsShown);
+    }
+
+    function processInputNewTicket() {
+      resetButtonColors();
+      rootRef.remove();
+      ticketInfoRef.update({
+        title: "Ticket: Untitled"
+      });
+
+    }
+
+    function createEternalCookie(name, value) {
+      createCookie(name, value, 365);
+    }
+
+    function createCookie(name, value, days) {
+      if (days) {
+        var date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        var expires = "; expires=" + date.toGMTString();
+      } else var expires = "";
+
+      document.cookie = name + "=" + value + expires + "; path=/";
+
+    }
+
+    function readCookie(name) {
+      var nameEQ = name + "=";
+
+      var ca = document.cookie.split(';');
+
+      for (var i = 0; i < ca.length; i++) {
+        var c = ca[i];
+        while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+      }
+      return null;
+    }
+
+    function eraseCookie(name) {
+      createCookie(name, "", -1);
+    }
+
+    function setColor(buttonid, color) {
+      var property = document.getElementById(buttonid);
+      property.style.backgroundColor = color;
+    }
+
+    function setVisibility(elementId, boolean) {
+      var element = document.getElementById(elementId);
+      if (boolean) {
+        // element.style.visibility = 'visible';
+        fadeIn(element);
+      } else {
+        // element.style.visibility = 'hidden';
+        fadeOut(element);
       }
     }
 
+    function fadeOut(el) {
+      el.style.opacity = 1;
 
-  }
+      (function fade() {
+        if ((el.style.opacity -= .1) < 0) {
+          el.style.visibility = 'hidden';
+        } else {
+          requestAnimationFrame(fade);
+        }
+      })();
+    }
 
-//change handlers
-rootRef.on("value", function(snapshot) {
-  var newSnapshot = snapshot.val();
-  console.log(newSnapshot);
-  refreshView(newSnapshot);
+    function fadeIn(el) {
+      el.style.opacity = 0;
+      el.style.visibility = 'visible';
 
-});
+      (function fade() {
+        var val = parseFloat(el.style.opacity);
+        if (!((val += .1) > 1)) {
+          el.style.opacity = val;
+          requestAnimationFrame(fade);
+        }
+      })();
+    }
 
-
-
-//Inputs
-function processInputEstimate(newEstimate){
-
-  var newScore = Number(newEstimate);
-  userScoreRef.setWithPriority({ name:username, score:newScore }, newScore);
-
-}
-
-function processInputTicketClicked(){
-
-  var title = $("#titleInput").val();
-  $("#titleInput").val("");
-
-  if (title.length === 0)
-    return;
-
-  ticketInfoRef.update({ title: title });
-
-}
-
-function processInputShowVotes(){
-
-  ticketInfoRef.update({ showVotes: username });
-
-}
-
-function processInputHideVotes(){
-
-  ticketInfoRef.child("showVotes").remove();
-    document.getElementById("showVotesContainer").innerHTML = "";
-
-}
-
-function processInputNewTicket(){
-
-  rootRef.remove();
-  ticketInfoRef.update({ title: "Ticket Name not entered" });
-
-
-
-}
-
-</script>
+  </script>
 </body>
+
 </html>
