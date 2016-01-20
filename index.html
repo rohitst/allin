@@ -213,7 +213,17 @@
           if (isShowVotes) {
             tallyTable.innerHTML = "<tr><th>Vote</th><th>Total</th></tr>";
 
+            var votes = [];
+
             for (var key in votesHash) {
+              votes.push(key);
+            }
+
+            votes.sort(function(a, b) {
+              return votesHash[a] < votesHash[b];
+            });
+
+            votes.forEach(function(key) {
               var newScoreRow = $("<tr/>");
               if (key == "-1") {
                 newScoreRow.append($("<td/>").append($("<em/>").text("Did not Participate")));
@@ -224,7 +234,7 @@
               }
               newScoreRow.append($("<td/>").text(votesHash[key]));
               $("#voteTallyTable").append(newScoreRow);
-            }
+            });
           } else {
             tallyTable.innerHTML = "";
 
